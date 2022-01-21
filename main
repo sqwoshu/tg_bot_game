@@ -1,0 +1,84 @@
+import telebot
+import sqlite3
+from telebot import types
+
+
+cliend = telebot.TeleBot('1978676251:AAECObJgAg3M48F0EeCMdA3Xlxde-m7GXHc')
+
+conn = sqlite3.connect('C:\\Users\\Home\\Desktop\\database\\database.db', check_same_thread=False)
+cursor = conn.cursor()
+
+def db_table_val(user_id: int, user_name: str, user_surname: str, username: str, balance: int):
+	cursor.execute('INSERT INTO tg_bot (user_id, user_name, user_surname, username, balance) VALUES (?, ?, ?, ?, ?)', (user_id, user_name, user_surname, username, balance))
+	conn.commit()
+
+@cliend.message_handler(commands=['start'])
+def inline(message):
+    rmk = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    rmk.add(types.KeyboardButton('Яблоки'),types.KeyboardButton('Кости'),types.KeyboardButton('Crash')).add(types.KeyboardButton('Балланс'))
+
+    # SQL check
+    #
+    sqlite_select_query = """SELECT * from tg_bot"""
+    cursor.execute(sqlite_select_query)
+    records = cursor.fetchall()
+
+    count = 0
+    id_tg_user = message.from_user.id
+    for row in records:
+        if row[1] == id_tg_user:
+            count += 1
+
+    if count == 1:
+        msg = cliend.send_message(message.chat.id, "С возвращением " + str(message.from_user.first_name), reply_markup=rmk)
+
+    else:
+        us_id = message.from_user.id
+        us_name = message.from_user.first_name
+        us_sname = message.from_user.last_name
+        username = message.from_user.username
+        balance = 20
+
+        db_table_val(user_id=us_id, user_name=us_name, user_surname=us_sname, username=username, balance=balance)
+
+        msg = cliend.send_message(message.chat.id, 'Добро пожаловать в CandyWorld', reply_markup=rmk)
+
+    #
+    #
+
+    cliend.register_next_step_handler(msg, sql)
+
+
+@cliend.message_handler(content_types = ['text'])
+def sql(message):
+    command = message.text
+    if command == "Яблоки удачи":
+        pass
+    elif command == "Игральные кости":
+        pass
+    elif command == "Crash":
+        pass
+    elif command == "Балланс":
+        balance(message)
+    else:
+        cliend.send_message(message.chat.id,"🚫  Вы ввели недоступную команду  🚫")
+
+def balance(message):
+    id_tg_user = message.from_user.id
+    user_balalnce = 0
+
+    cursor.execute("""SELECT * from tg_bot""")
+    records = cursor.fetchall()
+    for row in records:
+        if row[1] == id_tg_user:
+            user_balalnce = row[5]
+
+    cliend.send_message(message.chat.id,"Ваш балланс:  " + str(user_balalnce) + " руб." + "\n\nМинимальноая сумма для вывода: 50 руб.\nВывод средств осуществляется на: QIWI")
+
+def update_balance(message):
+    id_tg_user = message.from_user.id
+
+    cursor.execute(""f"Update tg_bot set balance = 10000 where user_id = {id_tg_user}""")
+    conn.commit()
+
+cliend.polling(none_stop=True, interval= 0)
