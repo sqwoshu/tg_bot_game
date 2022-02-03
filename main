@@ -20,11 +20,13 @@ info = {
     "chat_id":0,
     "call_apple": None,
     "call_bones": None,
-    "call_crash": None,
+    "call_nvuti": None,
     "count_call":0,
     "cef_apple":1.5,
     "apple_for":5,
-    "apple":""
+    "apple":"",
+    "nvuti_1":0,
+    "nvuti_2":0,
 }
 apple_mas = [[],[],[],[],[],[]]
 
@@ -36,7 +38,7 @@ def db_table_val(user_id: int, user_name: str, user_surname: str, username: str,
 @cliend.message_handler(commands=['start'])
 def inline(message):
     rmk = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    rmk.add(types.KeyboardButton('Яблоки'),types.KeyboardButton('Кости')).add(types.KeyboardButton('Баланс'))
+    rmk.add(types.KeyboardButton('Яблоки'),types.KeyboardButton('Кости'),types.KeyboardButton('Nvuti game')).add(types.KeyboardButton('Баланс'))
 
     # SQL check
     #
@@ -75,7 +77,7 @@ def main(message):
     command = message.text
     info["call_apple"] = None
     info["call_bones"] = None
-    info["call_crash"] = None
+    info["call_nvuti"] = None
 
     info["user_id"] = message.from_user.id
     info["chat_id"] = message.chat.id
@@ -84,6 +86,9 @@ def main(message):
         info["game"] = message.text
         bet(message)
     elif command == "Кости":
+        info["game"] = message.text
+        bet(message)
+    elif command == "Nvuti game":
         info["game"] = message.text
         bet(message)
     elif command == "Баланс":
@@ -129,7 +134,7 @@ def check(message):
         elif message.text == "Кости":
             info["game"] = message.text
             bet(message)
-        elif message.text == "Crash":
+        elif message.text == "Nvuti game":
             info["game"] = message.text
             bet(message)
         elif message.text == "Баланс":
@@ -146,6 +151,8 @@ def last_check(message):
             apple()
         elif info["game"] == "Кости":
             bones(message)
+        elif info["game"] == "Nvuti game":
+            nvuti(message)
         elif info["game"] == "Баланс":
             balance(message)
     else:
@@ -395,6 +402,64 @@ def bones_two(call):
 
     elif check_balance() < 2:
         cliend.answer_callback_query(call.id,'Ваш балланс меньше 2руб.')
+
+
+@cliend.message_handler(func=lambda message: True)
+def nvuti(message):
+    info["call_nvuti"] = True
+    info["user_plus"] = 0
+    info["count_call"] = 0
+
+    info["user_plus"] = int(info["user_add_balance"]) * 2
+    cliend.send_message(message.chat.id, "Каким будет следующее число", reply_markup=nvuti_gen_markup())
+
+def nvuti_gen_markup():
+    markup = InlineKeyboardMarkup()
+    markup.row_width = 2
+
+    r = random.randrange(0, 10000)
+    info["nvuti_1"] = r
+
+    markup.add(InlineKeyboardButton(f"{r}", callback_data="nv"))
+    markup.add(InlineKeyboardButton(f"Больше", callback_data="n1"),InlineKeyboardButton("Меньше", callback_data="n2"))
+
+
+    return markup
+
+
+
+@cliend.callback_query_handler(func=lambda call: info["call_nvuti"] )
+def nvuti_call(call):
+    r = random.randrange(0, 10000)
+    info["nvuti_2"] = r
+
+    if call.data == "n1" or call.data == "n2":
+        nvuti_replace(call)
+        if call.data == "n1" and info["nvuti_2"] >= info["nvuti_1"]:
+            cliend.answer_callback_query(call.id, f"🔼  Вы выиграли")
+            remove_update_balance()
+
+        elif call.data == "n2" and info["nvuti_2"] <= info["nvuti_1"]:
+            cliend.answer_callback_query(call.id, f"🔼  Вы выиграли")
+            remove_update_balance()
+        else:
+            cliend.answer_callback_query(call.id, f"🔽  Вы проиграли")
+            add_update_balance()
+
+    elif check_balance() < 2:
+        cliend.answer_callback_query(call.id,'Ваш балланс меньше 2руб.')
+
+    info[f"nvuti_1"] = r
+
+def nvuti_replace(call):
+    markup = InlineKeyboardMarkup()
+    markup.row_width = 2
+
+    markup.add(InlineKeyboardButton(f"{info['nvuti_2']}", callback_data="nv"))
+    markup.add(InlineKeyboardButton(f"Больше", callback_data="n1"), InlineKeyboardButton("Меньше", callback_data="n2"))
+
+    cliend.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text="Каким будет следующее число",
+                             reply_markup=markup)
 
 
 
