@@ -111,22 +111,25 @@ def bet(message):
 def check(message):
     bet_user = message.text
 
-    if ((bet_user.isdigit() == True) or (bet_user.count(',') == 1) or (bet_user.count('.') == 1)) and bet_user.isdigit != False:
+
+    if ((bet_user.isdigit() == True) or (bet_user.count(',') == 1) or (bet_user.count('.') == 1)) and bet_user.isdigit != False and len(bet_user.split()) == 1:
         if bet_user.count(',') == 1:
-            bet_user = bet_user.replace(',','.',1)
+            bet_user = bet_user.replace(',', '.', 1)
             if float(bet_user) >= 2:
-                info["user_add_balance"] = bet_user
+                info["user_add_balance"] = float(bet_user)
                 last_check(message)
             else:
                 cliend.send_message(message.chat.id, "Ставка меньше 2 руб.")
                 return bet(message)
         else:
             if float(bet_user) >= 2:
-                info["user_add_balance"] = bet_user
+                info["user_add_balance"] = float(bet_user)
                 last_check(message)
             else:
                 cliend.send_message(message.chat.id, "Ставка меньше 2 руб.")
                 return bet(message)
+
+
     else:
         if message.text == "Яблоки":
             info["game"] = message.text
@@ -140,9 +143,8 @@ def check(message):
         elif message.text == "Баланс":
             balance(message)
         else:
-            cliend.send_message(message.chat.id, "Данная ставка недопустима")
+            cliend.send_message(message.chat.id, "Данная ставка недопустима.")
             return bet(message)
-
 def last_check(message):
     balance_sql = check_balance()
 
@@ -342,7 +344,6 @@ def apple_two(call):
             r = 0
             apple_los_markup(call, r)
 
-        print(info["user_plus"], info["user_add_balance"])
 
     elif check_balance() < 2:
         cliend.answer_callback_query(call.id,'Ваш балланс меньше 2руб.')
@@ -389,12 +390,10 @@ def bones_two(call):
             remove_update_balance()
 
         elif r >= 7 and call.data  == "x1":
-            print("0")
             cliend.answer_callback_query(call.id, f"🔽  Вы проиграли, выпало число: {r}")
             add_update_balance()
 
         elif r <= 6 and call.data  == "x2":
-            print("0")
             cliend.answer_callback_query(call.id, f"🔽  Вы проиграли, выпало число: {r}")
             add_update_balance()
 
@@ -410,7 +409,7 @@ def nvuti(message):
     info["user_plus"] = 0
     info["count_call"] = 0
 
-    info["user_plus"] = int(info["user_add_balance"]) * 2
+    info["user_plus"] = float(info["user_add_balance"]) * 2
     cliend.send_message(message.chat.id, "Каким будет следующее число", reply_markup=nvuti_gen_markup())
 
 def nvuti_gen_markup():
