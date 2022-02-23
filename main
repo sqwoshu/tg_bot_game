@@ -111,25 +111,17 @@ def bet(message):
 def check(message):
     bet_user = message.text
 
-
-    if ((bet_user.isdigit() == True) or (bet_user.count(',') == 1) or (bet_user.count('.') == 1)) and bet_user.isdigit != False and len(bet_user.split()) == 1:
-        if bet_user.count(',') == 1:
-            bet_user = bet_user.replace(',', '.', 1)
-            if float(bet_user) >= 2:
-                info["user_add_balance"] = float(bet_user)
-                last_check(message)
-            else:
-                cliend.send_message(message.chat.id, "Ставка меньше 2 руб.")
-                return bet(message)
+    bet_user = bet_user.replace(',', '.', 1)
+    if len(bet_user.split()) == 1 and (bet_user.isdigit() == True or bet_user.count('.') == 1):
+        if float(bet_user) >= 2:
+            info["user_add_balance"] = float(bet_user)
+            last_check(message)
+        elif float(bet_user) < 2:
+            cliend.send_message(message.chat.id, "Ставка меньше 2 руб.")
+            return bet(message)
         else:
-            if float(bet_user) >= 2:
-                info["user_add_balance"] = float(bet_user)
-                last_check(message)
-            else:
-                cliend.send_message(message.chat.id, "Ставка меньше 2 руб.")
-                return bet(message)
-
-
+            cliend.send_message(message.chat.id, "Данная ставка недопустима.")
+            return bet(message)
     else:
         if message.text == "Яблоки":
             info["game"] = message.text
@@ -145,6 +137,7 @@ def check(message):
         else:
             cliend.send_message(message.chat.id, "Данная ставка недопустима.")
             return bet(message)
+
 def last_check(message):
     balance_sql = check_balance()
 
@@ -167,6 +160,8 @@ def last_check(message):
 #
 
 def apple():
+    add_update_balance()
+
     info["call_apple"] =    True
     info["user_plus"] =     0
     info["count_call"] =    0
@@ -350,6 +345,9 @@ def apple_two(call):
 
     else:
         if call.data == "aa":
+
+            info["call_apple"] = None
+
             cliend.answer_callback_query(call.id, "✅  Вы забрали свои деньги")
             remove_update_balance()
 
@@ -359,6 +357,8 @@ def apple_two(call):
 
 @cliend.message_handler(func=lambda message: True)
 def bones(message):
+    add_update_balance()
+
     info["call_bones"] = True
     info["user_plus"] = 0
     info["count_call"] = 0
@@ -405,6 +405,8 @@ def bones_two(call):
 
 @cliend.message_handler(func=lambda message: True)
 def nvuti(message):
+    add_update_balance()
+
     info["call_nvuti"] = True
     info["user_plus"] = 0
     info["count_call"] = 0
@@ -421,9 +423,6 @@ def nvuti_gen_markup():
 
     markup.add(InlineKeyboardButton(f"{r}", callback_data="nv"))
     markup.add(InlineKeyboardButton(f"Больше", callback_data="n1"),InlineKeyboardButton("Меньше", callback_data="n2"))
-
-
-    return markup
 
 
 
@@ -522,3 +521,4 @@ def remove_update_balance():
 
 
 cliend.polling(none_stop=True, interval= 0)
+
