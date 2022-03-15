@@ -326,23 +326,22 @@ def apple_two(call):
         if call.data == f"a{info['apple_for'] + 1}1" and r == 1:
             if info["count_call"] == 1:
                 add_update_balance()
-            info["user_plus"] = float(info["user_add_balance"]) * info["cef_apple"]
+            info["user_plus"] += float(info["user_add_balance"]) * info["cef_apple"]
             info["cef_apple"] += 0.5
         elif call.data == f"a{info['apple_for'] + 1}2" and r == 2:
             if info["count_call"] == 1:
                 add_update_balance()
-            info["user_plus"] = float(info["user_add_balance"])  * info["cef_apple"]
+            info["user_plus"] += float(info["user_add_balance"])  * info["cef_apple"]
             info["cef_apple"] += 0.5
         elif call.data == f"a{info['apple_for'] + 1}3" and r == 3:
             if info["count_call"] == 1:
                 add_update_balance()
-            info["user_plus"] = float(info["user_add_balance"])  * info["cef_apple"]
+            info["user_plus"] += float(info["user_add_balance"])  * info["cef_apple"]
             info["cef_apple"] += 0.5
         else:
-            add_update_balance()
             r = 0
             apple_los_markup(call, r)
-        print(info["user_plus"], info["count_call"])
+
 
     elif check_balance() < 2 and info["user_plus"] == 0:
             cliend.answer_callback_query(call.id,'Ваш балланс меньше 2руб.')
@@ -354,9 +353,6 @@ def apple_two(call):
 
             cliend.answer_callback_query(call.id, "✅  Вы забрали свои деньги")
             remove_update_balance()
-
-
-
 
 
 @cliend.message_handler(func=lambda message: True)
@@ -479,7 +475,7 @@ def balance(message):
         if row[1] == id_tg_user:
             user_balalnce = row[5]
 
-    cliend.send_message(message.chat.id,"💰 Ваш балланс:  " + str(user_balalnce) + " руб." + "\n\nМинимальноая сумма для вывода: 50 руб.\nВывод средств осуществляется на: QIWI")
+    cliend.send_message(message.chat.id,"💰 Ваш балланс:  " + str(user_balalnce) + " coins" + "\n\nМинимальноая сумма для вывода: 50 coins\nВывод средств осуществляется на: QIWI")
 
 
 #
