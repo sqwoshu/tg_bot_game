@@ -1,0 +1,583 @@
+import time
+
+import telebot
+import sqlite3
+from telebot import types
+from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
+import random
+
+
+cliend = telebot.TeleBot('1978676251:AAECObJgAg3M48F0EeCMdA3Xlxde-m7GXHc')
+
+conn = sqlite3.connect('C:\\Users\\Home\\Desktop\\database\\database.db', check_same_thread=False)
+cursor = conn.cursor()
+
+info = {
+    "game":"",
+    "user_add_balance":0,
+    "user_plus": 0,
+    "user_id":0,
+    "chat_id":0,
+    "call_apple": None,
+    "call_bones": None,
+    "call_nvuti": None,
+    "call_ttt":   None,
+    "count_call":0,
+    "cef_apple":2,
+    "apple_for":5,
+    "apple":"",
+    "nvuti_1":0,
+    "nvuti_2":0,
+    "index_topor": 1,
+    "index_apple": 1,
+    "index_bones": 1,
+    "index_nvuti": 1,
+}
+apple_mas = [[],[],[],[],[],[]]
+
+
+def db_table_val(user_id: int, user_name: str, user_surname: str, username: str, balance: int):
+	cursor.execute('INSERT INTO tg_bot (user_id, user_name, user_surname, username, balance) VALUES (?, ?, ?, ?, ?)', (user_id, user_name, user_surname, username, balance))
+	conn.commit()
+
+@cliend.message_handler(commands=['start'])
+def inline(message):
+    rmk = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    rmk.add(types.KeyboardButton('Яблоки'),types.KeyboardButton('Кости'),types.KeyboardButton('Nvuti game'),types.KeyboardButton('ttt')).add(types.KeyboardButton('Баланс'))
+
+    # SQL check
+    #
+    sqlite_select_query = """SELECT * from tg_bot"""
+    cursor.execute(sqlite_select_query)
+    records = cursor.fetchall()
+
+    count = 0
+    id_tg_user = message.from_user.id
+    for row in records:
+        if row[1] == id_tg_user:
+            count += 1
+
+    if count == 1:
+        msg = cliend.send_message(message.chat.id, "С возвращением " + str(message.from_user.first_name), reply_markup=rmk)
+
+    else:
+        us_id = message.from_user.id
+        us_name = message.from_user.first_name
+        us_sname = message.from_user.last_name
+        username = message.from_user.username
+        balance = 20
+
+        db_table_val(user_id=us_id, user_name=us_name, user_surname=us_sname, username=username, balance=balance)
+
+        msg = cliend.send_message(message.chat.id, 'Добро пожаловать в CandyWorld', reply_markup=rmk)
+
+    #
+    #
+
+    cliend.register_next_step_handler(msg, main)
+
+
+@cliend.message_handler(content_types = ['text'])
+def main(message):
+    command = message.text
+    info["call_apple"] = None
+    info["call_bones"] = None
+    info["call_nvuti"] = None
+    info["call_ttt"] =   None
+
+    info["user_id"] = message.from_user.id
+    info["chat_id"] = message.chat.id
+
+    info["count_call"] = 0
+
+    info['index_apple'] += 1
+    info['index_bones'] += 1
+    info['index_nvuti'] += 1
+
+    if command == "Яблоки":
+        info["game"] = message.text
+        bet(message)
+    elif command == "Кости":
+        info["game"] = message.text
+        bet(message)
+    elif command == "Nvuti game":
+        info["game"] = message.text
+        bet(message)
+    elif command == "ttt":
+        info["game"] = message.text
+        bet(message)
+    elif command == "Баланс":
+        balance(message)
+    elif command == "/start":
+        inline(message)
+    else:
+        cliend.send_message(message.chat.id,"📛  Вы ввели недоступную команду")
+
+##                          BET
+##
+
+def bet(message):
+    msg = cliend.send_message(message.chat.id, "Сделайте ставку, минимальная ставка составляет 2 руб.")
+
+    info["user_plus"] = 0
+
+    cliend.register_next_step_handler(msg, check)
+
+def check(message):
+    bet_user = message.text
+    balance_sql = check_balance()
+
+    bet_user = bet_user.replace(',', '.', 1)
+    if balance_sql >= 2 and len(bet_user.split()) == 1 and (bet_user.isdigit() == True or bet_user.count('.') == 1):
+        if float(bet_user) >= 2:
+            info["user_add_balance"] = float(bet_user)
+            last_check(message)
+        elif float(bet_user) < 2:
+            cliend.send_message(message.chat.id, "Ставка меньше 2 руб.")
+            return bet(message)
+        else:
+            cliend.send_message(message.chat.id, "Данная ставка недопустима.")
+            return bet(message)
+
+    elif balance_sql < 2:
+        cliend.send_message(message.chat.id, "Ваш баланс меньше 2 руб.")
+
+    else:
+        if message.text == "Яблоки":
+            info["game"] = message.text
+            bet(message)
+        elif message.text == "Кости":
+            info["game"] = message.text
+            bet(message)
+        elif message.text == "Nvuti game":
+            info["game"] = message.text
+            bet(message)
+        elif info["game"] == "ttt":
+            info["game"] = message.text
+            bet(message)
+        elif message.text == "Баланс":
+            balance(message)
+        else:
+            cliend.send_message(message.chat.id, "Данная ставка недопустима.")
+            return bet(message)
+
+def last_check(message):
+
+    if info["game"] == "Яблоки":
+        apple()
+    elif info["game"] == "Кости":
+        bones(message)
+    elif info["game"] == "Nvuti game":
+        nvuti(message)
+    elif info["game"] == "ttt":
+        ttt(message)
+    elif info["game"] == "Баланс":
+        balance(message)
+    else:
+        cliend.send_message(message.chat.id, "Ваш баланс меньше 2 руб.")
+##
+##
+
+
+#                                   GAME
+#
+def ttt(message):
+    # 🍋     - лимон
+    # 🍉     - арбуз
+    # 🥥     - кокос
+    # 🍄     - гриб
+    # 🍇     - виноград
+    # 🍒     - вишня
+    # 🌶     - перец
+    # 🥥    - кокос
+    # ☄     - комета
+    # 7
+    # 💣     - бомбочка
+    info["call_ttt"] = True
+    cliend.send_message(int(info["chat_id"]), "777",reply_markup=tttMarkup())
+def tttMarkup():
+    markup = InlineKeyboardMarkup()
+    markup.row_width = 3
+
+
+    for i in range(3):
+        markup.add(InlineKeyboardButton(f"t{i}1",callback_data=f"t{i}1"),
+                   InlineKeyboardButton(f"t{i}2",callback_data=f"t{i}2"),
+                   InlineKeyboardButton(f"t{i}3",callback_data=f"t{i}3"))
+
+    markup.add(InlineKeyboardButton("Крутить рулетку", callback_data="ttt"))
+
+    return markup
+
+@cliend.callback_query_handler(func=lambda call: info["call_ttt"])
+def tttMain(call):
+    markup = InlineKeyboardMarkup()
+    markup.row_width = 3
+
+    for i in range(3):
+        markup.add(InlineKeyboardButton(f"t1{i}{info['index_topor']}",callback_data=f"t1{i}{info['index_topor']}"),
+                   InlineKeyboardButton(f"t2{i}{info['index_topor']}",callback_data=f"t2{i}{info['index_topor']}"),
+                   InlineKeyboardButton(f"t3{i}{info['index_topor']}",callback_data=f"t3{i}{info['index_topor']}"))
+
+    info['index'] += 1
+    markup.add(InlineKeyboardButton("Забрать деньги", callback_data="aa"))
+    cliend.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
+                             text="777",
+                             reply_markup=markup)
+    time.sleep(0.5)
+    return tttMain(call)
+
+def apple():
+    info["call_apple"] =    True
+    info["user_plus"] =     0
+    info['apple_for'] =     5
+    info["cef_apple"] =     1.5
+
+    del apple_mas[0:]
+    for i in range(6):
+        apple_mas.append([])
+
+    cliend.send_message(int(info["chat_id"]), "Выберите яблоко", reply_markup=apple_gen_marup())
+
+def apple_gen_marup():
+    markup = InlineKeyboardMarkup()
+    markup.row_width = 4
+
+    cef = 4.0
+    for i in range(6):
+        if i == int(info["apple_for"]):
+            markup.add(InlineKeyboardButton(f"x {cef}", callback_data=f"cef{i}"),
+                       InlineKeyboardButton(f" 🍏 ", callback_data=f"a{i}{info['index_apple']}1"),
+                       InlineKeyboardButton(f" 🍏 ", callback_data=f"a{i}{info['index_apple']}2"),
+                       InlineKeyboardButton(f" 🍏 ", callback_data=f"a{i}{info['index_apple']}3"))
+
+        else:
+            markup.add(InlineKeyboardButton(f"x {cef}", callback_data=f"cef{i}"),
+                       InlineKeyboardButton(f"   ", callback_data=f"a{i}{info['index_apple']}1"),
+                       InlineKeyboardButton(f"   ", callback_data=f"a{i}{info['index_apple']}2"),
+                       InlineKeyboardButton(f"   ", callback_data=f"a{i}{info['index_apple']}3"))
+        cef -= 0.5
+
+    markup.add(InlineKeyboardButton("Забрать деньги",callback_data=f"aa{info['index_apple']}"))
+
+    return markup
+
+def back_apple(call,r):
+    markup = InlineKeyboardMarkup()
+    markup.row_width = 4
+    cef = 4.0
+
+    if r == 0:
+        for i in range(6):
+            if i == int(info["apple_for"]):
+                markup.add(InlineKeyboardButton(f"x {cef}", callback_data=f"cef{i}"),
+                           InlineKeyboardButton(f" 🍏 ", callback_data=f"a{i}{info['index_apple']}1"),
+                           InlineKeyboardButton(f" 🍏 ", callback_data=f"a{i}{info['index_apple']}2"),
+                           InlineKeyboardButton(f" 🍏 ", callback_data=f"a{i}{info['index_apple']}3"))
+
+            else:
+                markup.add(InlineKeyboardButton(f"x {cef}", callback_data=f"cef{i}"),
+                           InlineKeyboardButton(f"   ", callback_data=f"a{i}{info['index_apple']}1"),
+                           InlineKeyboardButton(f"   ", callback_data=f"a{i}{info['index_apple']}2"),
+                           InlineKeyboardButton(f"   ", callback_data=f"a{i}{info['index_apple']}3"))
+            cef -= 0.5
+
+        markup.add(InlineKeyboardButton("Забрать деньги", callback_data=f"aa{info['index_apple']}"))
+        cliend.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
+                                 text="Выберите яблоко",
+                                 reply_markup=markup)
+def apple_los_markup(call,r):
+    markup = InlineKeyboardMarkup()
+    markup.row_width = 4
+    cef = 4.0
+    if r == 0:
+        info["call_apple"] =    None
+
+        for i in range(6):
+            if i == 5 - int(info["count_call"]):
+                markup.add(InlineKeyboardButton(f"x {cef}", callback_data=f"cef{i}"),
+                           InlineKeyboardButton(f"   ", callback_data=f"a{i}{info['index_apple']}1"),
+                           InlineKeyboardButton(f"   ", callback_data=f"a{i}{info['index_apple']}2"),
+                           InlineKeyboardButton(f"   ", callback_data=f"a{i}{info['index_apple']}3"))
+
+
+            elif int(info["apple_for"]) > i:
+
+                markup.add(InlineKeyboardButton(f"x {cef}", callback_data=f"cef{i}"),
+                           InlineKeyboardButton(f"   ", callback_data=f"a{i}{info['index_apple']}1"),
+                           InlineKeyboardButton(f"   ", callback_data=f"a{i}{info['index_apple']}2"),
+                           InlineKeyboardButton(f"   ", callback_data=f"a{i}{info['index_apple']}3"))
+
+            elif int(info["apple_for"]) < i:
+
+                markup.add(InlineKeyboardButton(f"x {cef}", callback_data=f"cef{i}"),
+                           InlineKeyboardButton(f" {apple_mas[i][0][0]} ", callback_data=f"a{i}{info['index_apple']}1"),
+                           InlineKeyboardButton(f" {apple_mas[i][0][1]} ", callback_data=f"a{i}{info['index_apple']}2"),
+                           InlineKeyboardButton(f" {apple_mas[i][0][2]} ", callback_data=f"a{i}{info['index_apple']}3"))
+            cef -= 0.5
+
+        markup.add(InlineKeyboardButton("Забрать деньги", callback_data=f"aa{info['index_apple']}"))
+        cliend.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
+                                     text="Выберите яблоко",
+                                     reply_markup=markup)
+        info["user_plus"] = 0
+        info['apple_for'] = 5
+        info["cef_apple"] = 1.5
+
+        while len(apple_mas) != 0:
+            del apple_mas[0]
+        for i in range(6):
+            apple_mas.append([])
+
+        time.sleep(1)
+
+
+        info["call_apple"] = True
+        back_apple(call,r)
+
+    elif r == 1 or r == 2 or r == 3:
+        if r == 1:
+            apple_mas[info["apple_for"]].append("🍏🍎🍎")
+        elif r == 2:
+            apple_mas[info["apple_for"]].append("🍎🍏🍎")
+        elif r == 3:
+            apple_mas[info["apple_for"]].append("🍎🍎🍏")
+
+
+        info["apple_for"] -= 1
+
+        for i in range(6):
+
+            if i == int(info["apple_for"]):
+                markup.add(InlineKeyboardButton(f"x {cef}", callback_data=f"cef{i}"),
+                           InlineKeyboardButton(f" 🍏 ", callback_data=f"a{i}{info['index_apple']}1"),
+                           InlineKeyboardButton(f" 🍏 ", callback_data=f"a{i}{info['index_apple']}2"),
+                           InlineKeyboardButton(f" 🍏 ", callback_data=f"a{i}{info['index_apple']}3"))
+
+            elif int(info["apple_for"]) > i:
+                markup.add(InlineKeyboardButton(f"x {cef}", callback_data=f"cef{i}"),
+                           InlineKeyboardButton(f"   ", callback_data=f"a{i}{info['index_apple']}1"),
+                           InlineKeyboardButton(f"   ", callback_data=f"a{i}{info['index_apple']}2"),
+                           InlineKeyboardButton(f"   ", callback_data=f"a{i}{info['index_apple']}3"))
+
+
+            # apple button red and green
+            #
+            elif int(info["apple_for"]) < i:
+                markup.add(InlineKeyboardButton(f"x {cef}", callback_data=f"cef{i}"),
+                           InlineKeyboardButton(f" {apple_mas[i][0][0]} ", callback_data=f"a{i}{info['index_apple']}1"),
+                           InlineKeyboardButton(f" {apple_mas[i][0][1]} ", callback_data=f"a{i}{info['index_apple']}2"),
+                           InlineKeyboardButton(f" {apple_mas[i][0][2]} ", callback_data=f"a{i}{info['index_apple']}3"))
+
+            cef -= 0.5
+
+        markup.add(InlineKeyboardButton("Забрать деньги", callback_data=f"aa{info['index_apple']}"))
+        cliend.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text="Выберите яблоко",
+                                 reply_markup=markup)
+
+
+
+@cliend.callback_query_handler(func=lambda call: info["call_apple"])   # 🍎 - красное яблоко; 🍏 - зеленое яблоко;
+def apple_two(call):
+    info["count_call"] += 1
+    if (call.data == f"a{info['apple_for']}{info['index_apple']}1" or call.data == f"a{info['apple_for']}{info['index_apple']}2" or call.data == f"a{info['apple_for']}{info['index_apple']}3") and (check_balance() >= 2 or info["count_call"] == 1 or info["user_plus"] != 0):
+
+        r = random.randrange(1, 4)
+        apple_los_markup(call,r)
+
+        if call.data == f"a{info['apple_for'] + 1}{info['index_apple']}1" and r == 1:
+            if info["count_call"] == 1:
+                add_update_balance()
+            info["user_plus"] += float(info["user_add_balance"]) * info["cef_apple"]
+            info["cef_apple"] += 0.5
+        elif call.data == f"a{info['apple_for'] + 1}{info['index_apple']}2" and r == 2:
+            if info["count_call"] == 1:
+                add_update_balance()
+            info["user_plus"] += float(info["user_add_balance"])  * info["cef_apple"]
+            info["cef_apple"] += 0.5
+        elif call.data == f"a{info['apple_for'] + 1}{info['index_apple']}3" and r == 3:
+            if info["count_call"] == 1:
+                add_update_balance()
+            info["user_plus"] += float(info["user_add_balance"])  * info["cef_apple"]
+            info["cef_apple"] += 0.5
+        else:
+            r = 0
+            apple_los_markup(call, r)
+
+
+    elif check_balance() < 2 and info["user_plus"] == 0:
+            cliend.answer_callback_query(call.id,'Ваш балланс меньше 2руб.')
+
+    else:
+        if call.data == f"aa{info['index_apple']}":
+
+            info["call_apple"] = None
+
+            cliend.answer_callback_query(call.id, "✅  Вы забрали свои деньги")
+            remove_update_balance()
+
+
+@cliend.message_handler(func=lambda message: True)
+def bones(message):
+    add_update_balance()
+
+    info["call_bones"] = True
+    info["user_plus"] = 0
+    info["count_call"] = 0
+
+    cliend.send_message(message.chat.id, "Выберите число", reply_markup=bones_gen_markup())
+
+def bones_gen_markup():
+    markup = InlineKeyboardMarkup()
+    markup.row_width = 2
+    markup.add(InlineKeyboardButton("1 - 6", callback_data=f"x{info['index_bones']}1"),
+               InlineKeyboardButton("7 - 12", callback_data=f"x{info['index_bones']}2"))
+
+
+    return markup
+
+@cliend.callback_query_handler(func=lambda call: info["call_bones"] )
+def bones_two(call):
+    if (call.data  == f"x{info['index_bones']}1" or call.data  == f"x{info['index_bones']}2") and check_balance() >= 2:
+        info["count_call"] += 1
+        info["user_plus"] = int(info["user_add_balance"]) *  2
+
+        r = random.randrange(1, 12)
+        if r <= 6 and call.data  == f"x{info['index_bones']}1":
+            cliend.answer_callback_query(call.id,f"🔼  Вы выиграли, выпало число: {r}")
+            remove_update_balance()
+
+        elif r >= 7 and call.data  == f"x{info['index_bones']}2":
+            cliend.answer_callback_query(call.id,f"🔼  Вы выиграли, выпало число: {r}")
+            remove_update_balance()
+
+        else:
+            cliend.answer_callback_query(call.id, f"🔽  Вы проиграли, выпало число: {r}")
+            add_update_balance()
+
+        return bones_gen_markup()
+
+    elif check_balance() < 2:
+        cliend.answer_callback_query(call.id,'Ваш балланс меньше 2руб.')
+
+
+@cliend.message_handler(func=lambda message: True)
+def nvuti(message):
+    add_update_balance()
+
+    info["call_nvuti"] = True
+    info["user_plus"] = 0
+    info["count_call"] = 0
+
+    info["user_plus"] = float(info["user_add_balance"]) * 2
+    cliend.send_message(message.chat.id, "Каким будет следующее число", reply_markup=nvuti_gen_markup())
+
+def nvuti_gen_markup():
+    markup = InlineKeyboardMarkup()
+    markup.row_width = 2
+
+    r = random.randrange(0, 10000)
+    info["nvuti_1"] = r
+
+    markup.add(InlineKeyboardButton(f"{r}", callback_data="nv"))
+
+    markup.add(InlineKeyboardButton(f"Больше", callback_data=f"n{info['index_nvuti']}1"),
+               InlineKeyboardButton("Меньше", callback_data=f"n{info['index_nvuti']}2"))
+
+    return markup
+
+@cliend.callback_query_handler(func=lambda call: info["call_nvuti"] )
+def nvuti_call(call):
+    r = random.randrange(0, 10000)
+    info["nvuti_2"] = r
+
+    if call.data == f"n{info['index_nvuti']}1" or call.data == f"n{info['index_nvuti']}2":
+        nvuti_replace(call)
+        if call.data == f"n{info['index_nvuti']}1" and info["nvuti_2"] >= info["nvuti_1"]:
+            cliend.answer_callback_query(call.id, f"🔼  Вы выиграли")
+            remove_update_balance()
+
+        elif call.data == f"n{info['index_nvuti']}2" and info["nvuti_2"] <= info["nvuti_1"]:
+            cliend.answer_callback_query(call.id, f"🔼  Вы выиграли")
+            remove_update_balance()
+        else:
+            cliend.answer_callback_query(call.id, f"🔽  Вы проиграли")
+            add_update_balance()
+
+    elif check_balance() < 2:
+        cliend.answer_callback_query(call.id,'Ваш балланс меньше 2руб.')
+
+    info[f"nvuti_1"] = r
+
+def nvuti_replace(call):
+    markup = InlineKeyboardMarkup()
+    markup.row_width = 2
+
+    markup.add(InlineKeyboardButton(f"{info['nvuti_2']}", callback_data="nv"))
+    markup.add(InlineKeyboardButton(f"Больше", callback_data=f"n{info['index_nvuti']}1"), InlineKeyboardButton("Меньше", callback_data=f"n{info['index_nvuti']}2"))
+
+    cliend.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text="Каким будет следующее число",
+                             reply_markup=markup)
+
+
+
+#
+#
+
+def balance(message):
+
+    id_tg_user = message.from_user.id
+    user_balalnce = 0
+
+    cursor.execute("""SELECT * from tg_bot""")
+    records = cursor.fetchall()
+    for row in records:
+        if row[1] == id_tg_user:
+            user_balalnce = row[5]
+
+    cliend.send_message(message.chat.id,"💰 Ваш балланс:  " + str(user_balalnce) + " coins" + "\n\nМинимальноая сумма для вывода: 50 coins\nВывод средств осуществляется на: QIWI")
+
+
+#
+#
+
+
+def check_balance():
+    main_balance = 0
+    id_tg_user = int(info["user_id"])
+
+    sqlite_select_query = """SELECT * from tg_bot"""
+    cursor.execute(sqlite_select_query)
+    records = cursor.fetchall()
+
+    for row in records:
+        if row[1] == id_tg_user:
+            main_balance = row[5]
+
+    return main_balance
+
+def add_update_balance():
+    id_tg_user = int(info["user_id"])
+
+    update_balance_user = check_balance()
+    update_balance_user = update_balance_user - round(float(info["user_add_balance"]),1)
+
+    cursor.execute(""f"Update tg_bot set balance = {update_balance_user} where user_id = {id_tg_user}""")
+    conn.commit()
+
+    return update_balance_user
+
+def remove_update_balance():
+    id_tg_user = int(info["user_id"])
+
+    update_balance_user = check_balance()
+    update_balance_user = update_balance_user + round(float(info["user_plus"]), 1)
+
+    cursor.execute(""f"Update tg_bot set balance = {update_balance_user} where user_id = {id_tg_user}""")
+    conn.commit()
+
+
+    return update_balance_user
+
+
+cliend.polling(none_stop=True, interval= 0)
