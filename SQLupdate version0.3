@@ -447,7 +447,7 @@ def bones_gen_markup():
 
 @cliend.callback_query_handler(func=lambda call: info["call_bones"] )
 def bones_two(call):
-    if (call.data  == f"x{info['index_bones']}1" or call.data  == f"x{info['index_bones']}2") and get_balanceSQL_user() >= 2:
+    if (call.data  == f"x{info['index_bones']}1" or call.data  == f"x{info['index_bones']}2"):
         info["count_call"] += 1
         info["user_add_balance"] = int(info["user_subtract_balance"]) *  2
 
@@ -566,4 +566,3 @@ def add_balanceSQL():
 
 
 cliend.polling(none_stop=True, interval= 0)
-
