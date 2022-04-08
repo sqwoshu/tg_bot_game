@@ -1,5 +1,4 @@
 import time
-
 import telebot
 import sqlite3
 from telebot import types
@@ -14,8 +13,8 @@ cursor = conn.cursor()
 
 info = {
     "game":"",
-    "user_add_balance":0,
-    "user_plus": 0,
+    "user_subtract_balance":0,
+    "user_add_balance": 0,
     "user_id":0,
     "chat_id":0,
 
@@ -127,18 +126,18 @@ def main(message):
 def bet(message):
     msg = cliend.send_message(message.chat.id, "Сделайте ставку, минимальная ставка составляет 2 руб.")
 
-    info["user_plus"] = 0
+    info["user_add_balance"] = 0
 
     cliend.register_next_step_handler(msg, check)
 
 def check(message):
     bet_user = message.text
-    balance_sql = check_balance()
+    balance_sql = get_balanceSQL_user()
 
     bet_user = bet_user.replace(',', '.', 1)
     if balance_sql >= 2 and len(bet_user.split()) == 1 and (bet_user.isdigit() == True or bet_user.count('.') == 1):
         if float(bet_user) >= 2:
-            info["user_add_balance"] = float(bet_user)
+            info["user_subtract_balance"] = float(bet_user)
             last_check(message)
         elif float(bet_user) < 2:
             cliend.send_message(message.chat.id, "Ставка меньше 2 руб.")
@@ -243,7 +242,7 @@ def Updatet(call):
 
 def apple():
     info["call_apple"] =    True
-    info["user_plus"] =     0
+    info["user_add_balance"] =     0
     info['apple_for'] =     5
     info["cef_apple"] =     1.5
 
@@ -280,7 +279,7 @@ def back_apple(call,r):
     markup = InlineKeyboardMarkup()
     markup.row_width = 4
     cef = 4.0
-    
+
     if r == 0:
         for i in range(6):
             if i == int(info["apple_for"]):
@@ -334,7 +333,7 @@ def apple_los_markup(call,r):
         cliend.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
                                      text="Выберите яблоко",
                                      reply_markup=markup)
-        info["user_plus"] = 0
+        info["user_add_balance"] = 0
         info['apple_for'] = 5
         info["cef_apple"] = 1.5
 
@@ -394,7 +393,7 @@ def apple_los_markup(call,r):
 @cliend.callback_query_handler(func=lambda call: info["call_apple"])   # 🍎 - красное яблоко; 🍏 - зеленое яблоко;
 def apple_two(call):
     info["count_call"] += 1
-    if (call.data == f"a{info['apple_for']}{info['index_apple']}1" or call.data == f"a{info['apple_for']}{info['index_apple']}2" or call.data == f"a{info['apple_for']}{info['index_apple']}3") and (check_balance() >= 2 or info["count_call"] == 1 or info["user_plus"] != 0):
+    if (call.data == f"a{info['apple_for']}{info['index_apple']}1" or call.data == f"a{info['apple_for']}{info['index_apple']}2" or call.data == f"a{info['apple_for']}{info['index_apple']}3") and (get_balanceSQL_user() >= 2 or info["count_call"] == 1 or info["user_add_balance"] != 0):
 
         r = random.randrange(1, 4)
 
@@ -402,26 +401,26 @@ def apple_two(call):
 
         if call.data == f"a{info['apple_for'] + 1}{info['index_apple']}1" and r == 1:
             if info["count_call"] == 1:
-                add_update_balance()
-            info["user_plus"] += float(info["user_add_balance"]) * info["cef_apple"]
+                subtract_balanceSQL()
+            info["user_add_balance"] += float(info["user_subtract_balance"]) * info["cef_apple"]
             info["cef_apple"] += 0.5
         elif call.data == f"a{info['apple_for'] + 1}{info['index_apple']}2" and r == 2:
             if info["count_call"] == 1:
-                add_update_balance()
-            info["user_plus"] += float(info["user_add_balance"])  * info["cef_apple"]
+                subtract_balanceSQL()
+            info["user_add_balance"] += float(info["user_subtract_balance"])  * info["cef_apple"]
             info["cef_apple"] += 0.5
         elif call.data == f"a{info['apple_for'] + 1}{info['index_apple']}3" and r == 3:
             if info["count_call"] == 1:
-                add_update_balance()
-            info["user_plus"] += float(info["user_add_balance"])  * info["cef_apple"]
+                subtract_balanceSQL()
+            info["user_add_balance"] += float(info["user_subtract_balance"])  * info["cef_apple"]
             info["cef_apple"] += 0.5
         else:
             r = 0
             apple_los_markup(call, r)
-            add_update_balance()
+            subtract_balanceSQL()
 
 
-    elif check_balance() < 2 and info["user_plus"] == 0:
+    elif get_balanceSQL_user() < 2 and info["user_add_balance"] == 0:
             cliend.answer_callback_query(call.id,'Ваш балланс меньше 2руб.')
 
     else:
@@ -430,15 +429,15 @@ def apple_two(call):
             info["call_apple"] = None
 
             cliend.answer_callback_query(call.id, "✅  Вы забрали свои деньги")
-            remove_update_balance()
+            add_balanceSQL()
 
 
 @cliend.message_handler(func=lambda message: True)
 def bones(message):
-    add_update_balance()
+    subtract_balanceSQL()
 
     info["call_bones"] = True
-    info["user_plus"] = 0
+    info["user_add_balance"] = 0
     info["count_call"] = 0
 
     cliend.send_message(message.chat.id, "Выберите число", reply_markup=bones_gen_markup())
@@ -454,38 +453,38 @@ def bones_gen_markup():
 
 @cliend.callback_query_handler(func=lambda call: info["call_bones"] )
 def bones_two(call):
-    if (call.data  == f"x{info['index_bones']}1" or call.data  == f"x{info['index_bones']}2") and check_balance() >= 2:
+    if (call.data  == f"x{info['index_bones']}1" or call.data  == f"x{info['index_bones']}2") and get_balanceSQL_user() >= 2:
         info["count_call"] += 1
-        info["user_plus"] = int(info["user_add_balance"]) *  2
+        info["user_add_balance"] = int(info["user_subtract_balance"]) *  2
 
         r = random.randrange(1, 12)
         if r <= 6 and call.data  == f"x{info['index_bones']}1":
             cliend.answer_callback_query(call.id,f"🔼  Вы выиграли, выпало число: {r}")
-            remove_update_balance()
+            add_balanceSQL()
 
         elif r >= 7 and call.data  == f"x{info['index_bones']}2":
             cliend.answer_callback_query(call.id,f"🔼  Вы выиграли, выпало число: {r}")
-            remove_update_balance()
+            add_balanceSQL()
 
         else:
             cliend.answer_callback_query(call.id, f"🔽  Вы проиграли, выпало число: {r}")
-            add_update_balance()
+            subtract_balanceSQL()
 
         return bones_gen_markup()
 
-    elif check_balance() < 2:
+    elif get_balanceSQL_user() < 2:
         cliend.answer_callback_query(call.id,'Ваш балланс меньше 2руб.')
 
 
 @cliend.message_handler(func=lambda message: True)
 def nvuti(message):
-    add_update_balance()
+    subtract_balanceSQL()
 
     info["call_nvuti"] = True
-    info["user_plus"] = 0
+    info["user_add_balance"] = 0
     info["count_call"] = 0
 
-    info["user_plus"] = float(info["user_add_balance"]) * 2
+    info["user_add_balance"] = float(info["user_subtract_balance"]) * 2
     cliend.send_message(message.chat.id, "Каким будет следующее число", reply_markup=nvuti_gen_markup())
 
 def nvuti_gen_markup():
@@ -511,16 +510,16 @@ def nvuti_call(call):
         nvuti_replace(call)
         if call.data == f"n{info['index_nvuti']}1" and info["nvuti_2"] >= info["nvuti_1"]:
             cliend.answer_callback_query(call.id, f"🔼  Вы выиграли")
-            remove_update_balance()
+            add_balanceSQL()
 
         elif call.data == f"n{info['index_nvuti']}2" and info["nvuti_2"] <= info["nvuti_1"]:
             cliend.answer_callback_query(call.id, f"🔼  Вы выиграли")
-            remove_update_balance()
+            add_balanceSQL()
         else:
             cliend.answer_callback_query(call.id, f"🔽  Вы проиграли")
-            add_update_balance()
+            subtract_balanceSQL()
 
-    elif check_balance() < 2:
+    elif get_balanceSQL_user() < 2:
         cliend.answer_callback_query(call.id,'Ваш балланс меньше 2руб.')
 
     info[f"nvuti_1"] = r
@@ -541,16 +540,7 @@ def nvuti_replace(call):
 #
 
 def balance(message):
-
-    id_tg_user = message.from_user.id
-    user_balalnce = 0
-
-    cursor.execute("""SELECT * from tg_bot""")
-    records = cursor.fetchall()
-    for row in records:
-        if row[1] == id_tg_user:
-            user_balalnce = row[5]
-
+    user_balalnce = get_balanceSQL_user()
     cliend.send_message(message.chat.id,"💰 Ваш балланс:  " + str(user_balalnce) + " coins" + "\n\nМинимальноая сумма для вывода: 50 coins\nВывод средств осуществляется на: QIWI")
 
 
@@ -558,40 +548,29 @@ def balance(message):
 #
 
 
-def check_balance():
-    main_balance = 0
+def get_balanceSQL_user():
     id_tg_user = int(info["user_id"])
 
-    sqlite_select_query = """SELECT * from tg_bot"""
-    cursor.execute(sqlite_select_query)
-    records = cursor.fetchall()
+    cursor.execute(""f"SELECT balance from tg_bot WHERE user_id = {id_tg_user}""")
+    User_balanceSQL = cursor.fetchall()
 
-    for row in records:
-        if row[1] == id_tg_user:
-            main_balance = row[5]
+    return User_balanceSQL[0][0]
 
-    return main_balance
-
-def add_update_balance():
+def subtract_balanceSQL():
     id_tg_user = int(info["user_id"])
 
-    update_balance_user = check_balance()
-    update_balance_user = update_balance_user - round(float(info["user_add_balance"]),1)
-
+    update_balance_user = get_balanceSQL_user() - round(float(info["user_subtract_balance"]),1)
     cursor.execute(""f"Update tg_bot set balance = {update_balance_user} where user_id = {id_tg_user}""")
     conn.commit()
 
     return update_balance_user
 
-def remove_update_balance():
+def add_balanceSQL():
     id_tg_user = int(info["user_id"])
 
-    update_balance_user = check_balance()
-    update_balance_user = update_balance_user + round(float(info["user_plus"]), 1)
-
+    update_balance_user = get_balanceSQL_user() + round(float(info["user_add_balance"]), 1)
     cursor.execute(""f"Update tg_bot set balance = {update_balance_user} where user_id = {id_tg_user}""")
     conn.commit()
-
 
     return update_balance_user
 
