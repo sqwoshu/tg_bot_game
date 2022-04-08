@@ -51,20 +51,14 @@ def db_table_val(user_id: int, user_name: str, user_surname: str, username: str,
 def inline(message):
     rmk = types.ReplyKeyboardMarkup(resize_keyboard=True)
     rmk.add(types.KeyboardButton('Яблоки'),types.KeyboardButton('Кости'),types.KeyboardButton('Nvuti game'),types.KeyboardButton('ttt')).add(types.KeyboardButton('Баланс'))
+    id_tg_user = message.from_user.id
 
     # SQL check
     #
-    sqlite_select_query = """SELECT * from tg_bot"""
-    cursor.execute(sqlite_select_query)
-    records = cursor.fetchall()
+    cursor.execute(""f"SELECT user_id from tg_bot WHERE user_id = {id_tg_user}""")
+    user = cursor.fetchall()
 
-    count = 0
-    id_tg_user = message.from_user.id
-    for row in records:
-        if row[1] == id_tg_user:
-            count += 1
-
-    if count == 1:
+    if len(user) == 1:
         msg = cliend.send_message(message.chat.id, "С возвращением " + str(message.from_user.first_name), reply_markup=rmk)
 
     else:
@@ -542,12 +536,8 @@ def nvuti_replace(call):
 def balance(message):
     user_balalnce = get_balanceSQL_user()
     cliend.send_message(message.chat.id,"💰 Ваш балланс:  " + str(user_balalnce) + " coins" + "\n\nМинимальноая сумма для вывода: 50 coins\nВывод средств осуществляется на: QIWI")
-
-
 #
 #
-
-
 def get_balanceSQL_user():
     id_tg_user = int(info["user_id"])
 
